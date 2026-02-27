@@ -142,18 +142,23 @@ variables:
       ) | sort
     }}
   compare_date: >
-    {% if one_time and year_provided %}
-      {% set compare_date = (date | as_datetime | as_local).isoformat() %}
+    {% if one_time %}
+      {{ (date | as_datetime | as_local).isoformat() }}
     {% elif anniversary_list | select('eq', current_date) | list | count == 2 %}
-      {% set compare_date = current_date %}
+      {{ current_date }}
     {% else %}
       {% set index_current = anniversary_list.index(current_date) %}
-      {% set compare_date = anniversary_list[index_current - 1 if count_up else index_current + 1] %}
+      {{ anniversary_list[index_current - 1 if count_up else index_current + 1] }}
     {% endif %}
-    {{ compare_date }}
   days: >
-    {% set date_list = [current_date | as_datetime, compare_date | as_datetime] %}
-    {{ ((date_list | max).date() - (date_list | min).date()).days }}
+    {% set comp_date = compare_date | as_datetime %}
+    {% set curr_date = current_date | as_datetime %}
+    {% if one_time %}
+      {{ (curr_date.date() - comp_date.date()).days | abs }}
+    {% else %}
+      {% set date_list = [curr_date, comp_date] %}
+      {{ ((date_list | max).date() - (date_list | min).date()).days }}
+    {% endif %}
   half_date: >
     {% if show_half_anniversary %}
       {% set index_current = half_year_list.index(current_date) %}
@@ -186,16 +191,9 @@ sensor:
       {% endif %}
     current_years: >
       {% if year_provided %}
-        {% if one_time %}
-          {% set comp_date = current_date | as_datetime %}
-        {% elif anniversary_list | select('eq', current_date) | list | count == 2 %}
-          {% set comp_date = current_date | as_datetime %}
-        {% else %}
-          {% set index_current = anniversary_list.index(current_date) %}
-          {% set comp_date = anniversary_list[index_current - 1] | as_datetime %}
-        {% endif %}
         {% set provided_date = date | as_datetime | as_local %}
-        {% set year = (((comp_date - provided_date).days * 2) / 365) | round / 2 %}
+        {% set curr_date_obj = current_date | as_datetime %}
+        {% set year = (((curr_date_obj - provided_date).days * 2) / 365) | round / 2 %}
         {{ year | int if year | int == year else year }}
       {% else %}
         {{ none }}
@@ -208,12 +206,11 @@ sensor:
       {% if one_time and year_provided %}
         {{ date | as_datetime | as_local }}
       {% elif anniversary_list | select('eq', current_date) | list | count == 2 %}
-        {% set next_date = current_date | as_datetime %}
+        {{ current_date | as_datetime }}
       {% else %}
         {% set index_current = anniversary_list.index(current_date) %}
-        {% set next_date = anniversary_list[index_current + 1] | as_datetime %}
+        {{ anniversary_list[index_current + 1] | as_datetime }}
       {% endif %}
-      {{ next_date }}
     half_anniversary_date: >
       {{ half_date if show_half_anniversary else none }}
     days_until_half_anniversary_date: >
